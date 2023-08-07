@@ -7,6 +7,11 @@
   resolved "https://registry.yarnpkg.com/@pixi/accessibility/-/accessibility-7.2.4.tgz#3198d0059c230c668b1179457346a3b5dcba6e64"
   integrity sha512-EVjuqUqv9FeYFXCv0S0qj1hgCtbAMNBPCbOGEtiMogpM++/IySxBZvcOYg3rRgo9inwt2s4Bi7kUiqMPD8hItw==
 
+"@pixi/animate@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@pixi/animate/-/animate-3.0.0.tgz#6e633206995e716520e0dace563412e5b0d7d439"
+  integrity sha512-NhivfxCcQalRa6V9FVrohGcDB+QSIZYOvuTaXB7y/5a/qpHSvlVEaMFkbM7CFF7R59sBHXIQ7UunBHUOyoHM/g==
+
 "@pixi/app@7.2.4":
   version "7.2.4"
   resolved "https://registry.yarnpkg.com/@pixi/app/-/app-7.2.4.tgz#ae16fdc9fce04224fb36311168d902a2e7d0e65a"

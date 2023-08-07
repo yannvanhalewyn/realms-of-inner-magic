@@ -27,5 +27,8 @@
 (defn get-height [app]
   (j/get-in app [:renderer :height]))
 
+(defn last-time [app]
+  (j/get-in app [:ticker :lastTime]))
+
 (defn clear! [app]
   (j/call-in app [:stage :removeChildren]))

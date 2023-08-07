@@ -1,7 +1,15 @@
 (ns wg.core
   (:require ["pixi.js" :as pixi]
             [applied-science.js-interop :as j]
-            [wg.app :as app]))
+            [wg.app :as app]
+            [wg.sprite :as sprite]
+            [wg.vec :as vec]
+            [devtools.core :as devtools]))
+
+(devtools/set-pref!
+ :cljs-land-style
+ (str "filter:invert(1);" (:cljs-land-style (devtools/get-prefs))))
+(devtools/install! [:custom-formatters :sanity-hints])
 
 (defonce app-atom (atom nil))
 (defonce db (atom {}))
@@ -15,8 +23,7 @@
 
 (defn on-click [e]
   (let [{:keys [player-sprite]} @db]
-    (j/assoc! player-sprite :x (j/get e :x))
-    (j/assoc! player-sprite :y (j/get e :y))))
+    (swap! db assoc-in [:db/player :player/pos] [(j/get e :x) (j/get e :y)])))
 
 (defn add-background! [app]
   (let [obj (pixi/Graphics.)]
@@ -32,11 +39,27 @@
     (app/add-child app bunny)
 
     (j/call-in bunny [:anchor :set] 0.5)
-    (j/assoc! bunny :x (/ (app/get-width app) 2))
-    (j/assoc! bunny :y (/ (app/get-height app) 2))
+
+    (let [x (/ (app/get-width app) 2)
+          y (/ (app/get-height app) 2)]
+      (swap! db assoc :db/player {:player/pos [x y]
+                                  ;; pixels per second
+                                  :player/speed 10})
+      (j/assoc! bunny :x x)
+      (j/assoc! bunny :y y))
 
     (j/call-in app [:ticker :add]
                (fn [dt]
+                 (let [{:player/keys [pos speed]} (:db/player @db)
+                       sprite-pos (sprite/get-pos bunny)]
+                   (when-not (= sprite-pos pos)
+                     ;; Move a frame in the direction from sprite-pos to player-pos
+                     (let [dir (vec/normalize (vec/- pos sprite-pos))
+                           translate (vec/* dir (* speed dt))
+                           [new-x new-y] (vec/+ sprite-pos translate)]
+                       ;; (.log js/console "dir:" new-x "translate:" translate "newpos:" [new-x new-y])
+                       (j/assoc! bunny :x new-x)
+                       (j/assoc! bunny :y new-y))))
                  (j/update! bunny :rotation #(+ % (* 0.01 dt)))))))
 
 (defn ^:dev/after-load refresh! []

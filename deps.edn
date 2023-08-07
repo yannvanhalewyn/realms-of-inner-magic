@@ -7,4 +7,5 @@
   {:extra-paths ["dev" "dev-resources"]
    :extra-deps {cider/piggieback {:mvn/version "0.5.3"}
                 cider/cider-nrepl {:mvn/version "0.32.0-alpha1"}
-                vvvvalvalval/scope-capture {:mvn/version "0.3.2"}}}}}
+                vvvvalvalval/scope-capture {:mvn/version "0.3.2"}
+                binaryage/devtools {:mvn/version "1.0.7"}}}}}
