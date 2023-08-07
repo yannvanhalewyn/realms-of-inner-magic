@@ -48,23 +48,29 @@
       (j/assoc! bunny :x x)
       (j/assoc! bunny :y y))
 
-    (j/call-in app [:ticker :add]
-               (fn [dt]
-                 (let [{:player/keys [pos speed]} (:db/player @db)
-                       sprite-pos (sprite/get-pos bunny)]
-                   (when-not (= sprite-pos pos)
-                     ;; Move a frame in the direction from sprite-pos to player-pos
-                     (let [dir (vec/normalize (vec/- pos sprite-pos))
-                           translate (vec/* dir (* speed dt))
-                           [new-x new-y] (vec/+ sprite-pos translate)]
-                       ;; (.log js/console "dir:" new-x "translate:" translate "newpos:" [new-x new-y])
-                       (j/assoc! bunny :x new-x)
-                       (j/assoc! bunny :y new-y))))
-                 (j/update! bunny :rotation #(+ % (* 0.01 dt)))))))
+    (let [update-fn (fn [dt]
+                      (let [{:player/keys [pos speed]} (:db/player @db)
+                            sprite-pos (sprite/get-pos bunny)]
+                        (when-not (= sprite-pos pos)
+                          ;; Move a frame in the direction from sprite-pos to player-pos
+                          (let [dir (vec/normalize (vec/- pos sprite-pos))
+
+                                translate (vec/* dir (* speed dt))
+                                [new-x new-y] (vec/+ sprite-pos translate)]
+                            ;; (.log js/console "dir:" new-x "translate:" translate "newpos:" [new-x new-y])
+                            (j/assoc! bunny :x new-x)
+                            (j/assoc! bunny :y new-y))))
+                      (j/update! bunny :rotation #(+ % (* 0.01 dt))))]
+
+      (j/call-in app [:ticker :add] update-fn)
+      #(do (.log js/console "Cleanup!")
+           (j/call-in app [:ticker :remove] update-fn)))))
 
 (defn ^:dev/after-load refresh! []
   (app/clear! @app-atom)
-  (render! @app-atom))
+  (when-let [cleanup (:dev/cleanup @db)]
+    (cleanup))
+  (swap! db assoc :dev/cleanup (render! @app-atom)))
 
 (defn main []
   (let [app (app/new {:on-resize refresh!})]
