@@ -1,0 +1,8 @@
+{:paths ["src" "resources"]
+ :deps {thheller/shadow-cljs {:mvn/version "2.25.2"}}
+ :aliases
+ {:dev
+  {:extra-paths ["dev" "dev-resources"]
+   :extra-deps {cider/piggieback {:mvn/version "0.5.3"}
+                cider/cider-nrepl {:mvn/version "0.32.0-alpha1"}
+                vvvvalvalval/scope-capture {:mvn/version "0.3.2"}}}}}

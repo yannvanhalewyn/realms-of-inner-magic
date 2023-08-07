@@ -1,0 +1,12 @@
+{
+  "name": "werfeling_game",
+  "version": "1.0.0",
+  "description": "A setup for creating a web based MMORPG for a next generation fantasy society building game",
+  "main": "index.js",
+  "author": "Yann Vanhalewyn",
+  "license": "MIT",
+  "private": true,
+  "devDependencies": {
+    "shadow-cljs": "^2.25.2"
+  }
+}
