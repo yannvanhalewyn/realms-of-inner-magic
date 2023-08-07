@@ -27,6 +27,9 @@
 (defn get-height [app]
   (j/get-in app [:renderer :height]))
 
+(defn resolution [app]
+  [(get-width app) (get-height app)])
+
 (defn last-time [app]
   (j/get-in app [:ticker :lastTime]))
 

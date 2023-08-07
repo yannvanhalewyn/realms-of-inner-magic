@@ -4,6 +4,7 @@
             [wg.app :as app]
             [wg.sprite :as sprite]
             [wg.vec :as vec]
+            [wg.world :as world]
             [devtools.core :as devtools]))
 
 (devtools/set-pref!
@@ -22,8 +23,8 @@
   (j/assoc! sprite :eventMode "static"))
 
 (defn on-click [e]
-  (let [{:keys [player-sprite]} @db]
-    (swap! db assoc-in [:db/player :player/pos] [(j/get e :x) (j/get e :y)])))
+  (swap! db assoc-in [:db/player :player/pos]
+         (world/->world-coords @app-atom [(j/get e :x) (j/get e :y)])))
 
 (defn add-background! [app]
   (let [obj (pixi/Graphics.)]
@@ -40,27 +41,28 @@
 
     (j/call-in bunny [:anchor :set] 0.5)
 
-    (let [x (/ (app/get-width app) 2)
-          y (/ (app/get-height app) 2)]
-      (swap! db assoc :db/player {:player/pos [x y]
-                                  ;; pixels per second
-                                  :player/speed 10})
-      (j/assoc! bunny :x x)
-      (j/assoc! bunny :y y))
+    (let [pos [0 0]]
+      (swap! db assoc :db/player {:player/pos pos
+                                  ;; m/s
+                                  :player/speed 1.38})
+      (sprite/set-pos! bunny (world/->pixel-coords app pos)))
 
     (let [update-fn (fn [dt]
-                      (let [{:player/keys [pos speed]} (:db/player @db)
-                            sprite-pos (sprite/get-pos bunny)]
-                        (when-not (= sprite-pos pos)
-                          ;; Move a frame in the direction from sprite-pos to player-pos
-                          (let [dir (vec/normalize (vec/- pos sprite-pos))
+                      (let [{:player/keys [speed]
+                             target-pos :player/pos} (:db/player @db)
+                            sprite-pos (sprite/get-pos bunny)
+                            current-pos (world/->world-coords app sprite-pos)]
 
-                                translate (vec/* dir (* speed dt))
-                                [new-x new-y] (vec/+ sprite-pos translate)]
-                            ;; (.log js/console "dir:" new-x "translate:" translate "newpos:" [new-x new-y])
-                            (j/assoc! bunny :x new-x)
-                            (j/assoc! bunny :y new-y))))
-                      (j/update! bunny :rotation #(+ % (* 0.01 dt))))]
+                        (when-not (= current-pos target-pos)
+                          (let [diff (vec/- target-pos current-pos)
+                                distance (vec/length diff)
+                                dir (vec/normalize (vec// diff distance))
+                                step (* speed dt 0.001)
+                                new-pos (if (> step distance)
+                                          target-pos
+                                          (vec/+ current-pos (vec/* dir step)))]
+                            (sprite/set-pos!
+                             bunny (world/->pixel-coords app new-pos))))))]
 
       (j/call-in app [:ticker :add] update-fn)
       #(do (.log js/console "Cleanup!")
