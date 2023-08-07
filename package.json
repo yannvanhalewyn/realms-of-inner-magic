@@ -8,5 +8,8 @@
   "private": true,
   "devDependencies": {
     "shadow-cljs": "^2.25.2"
+  },
+  "dependencies": {
+    "pixi.js": "^7.2.4"
   }
 }
