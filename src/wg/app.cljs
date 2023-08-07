@@ -1,5 +1,22 @@
 (ns wg.app
-  (:require [applied-science.js-interop :as j]))
+  (:require [applied-science.js-interop :as j]
+            ["pixi.js" :as pixi]))
+
+(defn resize [app]
+  (j/call-in app [:renderer :resize]
+             (j/get js/window :innerWidth)
+             (j/get js/window :innerHeight)))
+
+(defn new [{:keys [on-resize]}]
+  (let [app (pixi/Application.
+             #js {:autoResize true
+                  :resolution (j/get js/window :devicePixelRation)})]
+    (j/call js/window :addEventListener "resize"
+            #(do (resize app)
+                 (when on-resize (on-resize))))
+    (resize app)
+    (j/call-in js/document [:body :appendChild] (j/get app :view))
+    app))
 
 (defn add-child [app child]
   (j/call-in app [:stage :addChild] child))
@@ -11,5 +28,4 @@
   (j/get-in app [:renderer :height]))
 
 (defn clear! [app]
-  (doseq [child (j/get app :children)]
-    (.log js/console child )))
+  (j/call-in app [:stage :removeChildren]))
