@@ -5,6 +5,9 @@
   (let [ch (async/chan 1)]
     {::ch ch ::pub (async/pub ch ::tag)}))
 
+(defn close-publisher! [publisher]
+  (async/close! (::ch publisher)))
+
 (defn subscribe!
   ([publisher topic]
    (let [ch (async/chan 1)]
@@ -27,11 +30,15 @@
 (comment
   (def publisher (make-publisher))
 
-  (def subscription
-    (subscribe! publisher :player-activity #(println "Player activity" %)))
+
+  (def subscription (subscribe! publisher :player-activity
+                                (fn [msg]
+                                  (println "Other subscriber" msg))))
 
   (publish! publisher :player-activity [10 10])
 
   (unsubscribe! subscription)
+
+  (close-publisher! publisher)
 
   )
