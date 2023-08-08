@@ -3,7 +3,8 @@
             [clojure.tools.logging :as log]
             [malli.core :as malc]
             [malli.registry :as malr]
-            [wg.server.api :as api]))
+            [wg.server.api :as api]
+            [clojure.java.io :as io]))
 
 (def plugins
   [(biff/authentication-plugin {})
@@ -42,7 +43,8 @@
 (defonce system (atom {}))
 
 (def get-secret
-  (let [secrets (delay (read-string (slurp "secrets.edn")))]
+  (let [file (io/file "secrets.edn")
+        secrets (delay (when (.exists file) (read-string (slurp file))))]
     (fn [ctx k]
       (get @secrets (get ctx k)))))
 
