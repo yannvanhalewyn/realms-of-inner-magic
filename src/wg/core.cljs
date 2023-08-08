@@ -34,7 +34,7 @@
     (app/add-child app obj)))
 
 (defn render! [app]
-  (let [bunny (make-sprite "https://pixijs.com/assets/bunny.png")]
+  (let [bunny (make-sprite "/img/1_IDLE_000.png")]
     (swap! db assoc :player-sprite bunny)
     (add-background! app)
     (app/add-child app bunny)
@@ -56,7 +56,7 @@
                         (when-not (= current-pos target-pos)
                           (let [diff (vec/- target-pos current-pos)
                                 distance (vec/length diff)
-                                dir (vec/normalize (vec// diff distance))
+                                dir (vec/normalize (vec/div diff distance))
                                 step (* speed dt 0.001)
                                 new-pos (if (> step distance)
                                           target-pos

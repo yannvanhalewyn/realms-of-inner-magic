@@ -19,8 +19,11 @@
 (defn * [[x y] scale]
   [(*' x scale) (*' y scale)])
 
-(defn / [[x y] scale]
+(defn / [[x1 y1] [x2 y2]]
+  [(/ x1 x2) (/y1 y2)])
+
+(defn div [[x y] scale]
   [(div x scale) (div y scale)])
 
 (defn normalize [v]
-  (/ v (length v)))
+  (div v (length v)))
