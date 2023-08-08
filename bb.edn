@@ -1,1 +1,4 @@
-{:tasks {repl (shell "npx" "shadow-cljs" "-A:dev" "watch" "app")}}
+{:tasks {cljs (shell {:extra-env {"BIFF_ENV" "dev"}}
+                    "npx" "shadow-cljs" "-A:dev" "watch" "app")
+         repl (shell {:extra-env {"BIFF_ENV" "dev"}}
+                     "clj -M:dev:cider-nrepl")}}
