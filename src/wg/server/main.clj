@@ -1,9 +1,11 @@
 (ns wg.server.main
   (:require [com.biffweb :as biff]
+            [com.biffweb.impl.middleware :as biff.middleware]
             [clojure.tools.logging :as log]
             [malli.core :as malc]
             [malli.registry :as malr]
             [wg.server.api :as api]
+            [org.httpkit.server :as http-server]
             [clojure.java.io :as io]))
 
 (def plugins
@@ -54,13 +56,21 @@
       (println "Secrets are missing, add a secrets.edn")))
   (assoc ctx :biff/secret #(get-secret ctx %)))
 
+(defn use-http-kit [{:biff/keys [host port handler]
+                     :or {host "localhost" port 8080}
+                     :as ctx}]
+  (let [server (http-server/run-server handler {:host host :port port})]
+    (log/info "Server running on" (str "http://" host ":" port))
+    (update ctx :biff/stop conj server)))
+
 (def components
   [biff/use-config
    use-secrets
    biff/use-xt
    biff/use-queues
    biff/use-tx-listener
-   biff/use-jetty
+   biff.middleware/use-wrap-ctx
+   use-http-kit
    biff/use-chime
    biff/use-beholder])
 
