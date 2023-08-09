@@ -7,6 +7,9 @@
 (defn make-server! [opts]
   (sente/make-channel-socket-server! (get-sch-adapter) opts))
 
+(defn close-server! [ws-server]
+  (async/close! (:ch-recv ws-server)))
+
 (defn send! [{:keys [send-fn]} uid event]
   (send-fn uid event))
 
@@ -17,16 +20,18 @@
 (defn start-listener! [{:keys [ch-recv]} handler]
   (async/go-loop []
     ;; Needs recur
-    (handler (async/<! ch-recv))))
+    (when-let [msg (async/<! ch-recv)]
+      (handler msg)
+      (recur))))
 
 (defn use-listener [{:keys [:chsk/server :chsk/handler] :as ctx}]
-  (println "USING listener")
   (let [server (make-server! server)
         listener (start-listener! server handler)]
     (-> ctx
         (assoc ::server server)
         ;; Maybe close the ch-recv instead
-        #_(update :biff/stop conj #(async/close! listener)))))
+        (update :biff/stop conj #(async/close! listener))
+        (update :biff/stop conj #(close-server! server)))))
 
 (defn http-get [{::keys [server] :as req}]
   ((:ajax-get-or-ws-handshake-fn server) req))

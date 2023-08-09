@@ -15,7 +15,9 @@
 
 (defn start-listener! [{:keys [ch-recv]} handler]
   (async/go-loop []
-    (handler (async/<! ch-recv))))
+    (when-let [msg (async/<! ch-recv)]
+      (handler (async/<! ch-recv))
+      (recur))))
 
 (comment
   (send! (:ws/client @wg.core/db) [:player/joined {}])
