@@ -1,5 +1,6 @@
 (ns dev
   (:require
+   [sc.api]
    [wg.server.main :as main]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
@@ -11,7 +12,7 @@
 
 (def start #'main/-main)
 
-(def system #'main/system)
+(def system main/system)
 
 (defn refresh []
   (doseq [f (:biff/stop @system)]

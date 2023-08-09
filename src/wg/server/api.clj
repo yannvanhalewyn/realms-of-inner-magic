@@ -1,6 +1,4 @@
-(ns wg.server.api
-  (:require
-   [com.biffweb :as biff]))
+(ns wg.server.api)
 
 (defn- subscribe [{:keys [biff/db params]}]
   {:status 200

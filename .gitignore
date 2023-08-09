@@ -3,6 +3,6 @@
 /.lsp/
 /.shadow-cljs/
 /node_modules/
-public/js/
+/resources/public/js/
 /.nrepl-port
 /storage/
