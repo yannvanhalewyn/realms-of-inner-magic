@@ -5,7 +5,8 @@
             [wg.sprite :as sprite]
             [wg.vec :as vec]
             [wg.world :as world]
-            [devtools.core :as devtools]))
+            [devtools.core :as devtools]
+            [wg.client.ws :as ws]))
 
 (devtools/set-pref!
  :cljs-land-style
