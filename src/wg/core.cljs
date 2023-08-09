@@ -69,6 +69,9 @@
       #(do (.log js/console "Cleanup!")
            (j/call-in app [:ticker :remove] update-fn)))))
 
+(defn socket-message-handler [{:keys [ch-recv send-fn state event id ?data]}]
+  (.log js/console :received-socket-message event))
+
 (defn ^:dev/after-load refresh! []
   (app/clear! @app-atom)
   (when-let [cleanup (:dev/cleanup @db)]
@@ -76,6 +79,10 @@
   (swap! db assoc :dev/cleanup (render! @app-atom)))
 
 (defn main []
-  (let [app (app/new {:on-resize refresh!})]
+  (let [app (app/new {:on-resize refresh!})
+        ws-client (ws/connect!)]
+    (swap! db assoc :ws/client ws-client)
     (reset! app-atom app)
+    (ws/start-listener! ws-client socket-message-handler)
+    (ws/send! ws-client [:player/joined])
     (render! app)))

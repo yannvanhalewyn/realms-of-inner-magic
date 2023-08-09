@@ -5,6 +5,7 @@
             [malli.core :as malc]
             [malli.registry :as malr]
             [wg.server.api :as api]
+            [wg.server.ws :as ws]
             [org.httpkit.server :as http-server]
             [clojure.java.io :as io]))
 
@@ -21,8 +22,7 @@
                  (biff/wrap-base-defaults)))
 
 (defn on-save [ctx]
-  (biff/add-libs)
-  (biff/eval-files! ctx))
+  (biff/add-libs))
 
 (def malli-opts
   {:registry (malr/composite-registry
@@ -40,7 +40,11 @@
    :biff/malli-opts #'malli-opts
    :biff.beholder/on-save #'on-save
    :biff.xtdb/tx-fns (->> (conj (keep :tx-fns plugins) biff/tx-fns)
-                          (apply biff/safe-merge))})
+                          (apply biff/safe-merge))
+   :chsk/server {:csrf-token-fn nil
+                 :user-id-fn (fn [_req] (random-uuid))}
+   :chsk/handler (fn [event]
+                   (println "CHSK EVENT" (keys event)))})
 
 (defonce system (atom {}))
 
@@ -69,6 +73,8 @@
    biff/use-xt
    biff/use-queues
    biff/use-tx-listener
+   ;; Must be before use-wrap-ctx for handlers to have access to ws-server
+   ws/use-listener
    biff.middleware/use-wrap-ctx
    use-http-kit
    biff/use-chime

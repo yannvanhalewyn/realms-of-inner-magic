@@ -2,6 +2,7 @@
   (:require
    [sc.api]
    [wg.server.main :as main]
+   [wg.server.ws :as ws]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [clojure.tools.namespace.repl :as tools.ns.repl]
@@ -61,3 +62,9 @@
 
 (defn explain [doc-type doc]
   (malli/explain doc-type doc @(:biff/malli-opts @system)))
+
+(defn ws-server []
+  (::ws/server @system))
+
+(defn ws-broadcast! [msg]
+  (ws/broadcast! (ws-server) msg))

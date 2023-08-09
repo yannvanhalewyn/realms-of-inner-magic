@@ -4,15 +4,20 @@
    [clojure.core.async :as async]
    [taoensso.sente :as sente]))
 
-(let [{:keys [chsk ch-recv send-fn state]}
-      (sente/make-channel-socket-client!
-       "/ws" ; Note the same path as before
-       nil
-       {:type :auto ; e/o #{:auto :ajax :ws}
-       })]
+(defn connect! []
+  (sente/make-channel-socket-client! "/ws" nil {:type :auto}))
 
-  (def chsk       chsk)
-  (def ch-chsk    ch-recv) ; ChannelSocket's receive channel
-  (def chsk-send! send-fn) ; ChannelSocket's send API fn
-  (def chsk-state state)   ; Watchable, read-only atom
+(defn send! [{:keys [send-fn] :as ws-client} event]
+  (send-fn event 8000
+           #(if (sente/cb-success? %)
+              (.log js/console "ws-send:success" %)
+              (.log js/console "ws-send:failure" %))))
+
+(defn start-listener! [{:keys [ch-recv]} handler]
+  (async/go-loop []
+    (handler (async/<! ch-recv))))
+
+(comment
+  (send! (:ws/client @wg.core/db) [:player/joined {}])
+
   )
