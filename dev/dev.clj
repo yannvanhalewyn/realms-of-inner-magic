@@ -74,3 +74,13 @@
 
 (defn ws-broadcast! [msg]
   (ws/broadcast! (ws-server) msg))
+
+(defn ws-send! [server user-id msg]
+  ((:send-fn (ws-server)) #uuid "26849503-3209-4f07-bff9-b8756c97abf6" [:message/topic "hello!"])
+  )
+
+(comment
+  (ws-broadcast! [:my/topic "how you doin"])
+  (ws-send! #uuid "216bd1c6-2a2c-4242-84a5-82683e106abc" [:my/topic "how you doin"])
+
+  )

@@ -5,9 +5,10 @@
    [taoensso.sente :as sente]))
 
 (defn connect! [user-id]
-  (sente/make-channel-socket-client! "/ws" nil {:type :auto
-                                                ;; :player/id gets serialized to string
-                                                :params {:uid user-id}}))
+  (sente/make-channel-socket-client!
+   "/ws" nil {:type :auto
+              ;; :player/id gets serialized to string
+              :params {:uid user-id}}))
 
 (defn send! [{:keys [send-fn] :as ws-client} event]
   (send-fn event 8000

@@ -6,7 +6,8 @@
             [wg.vec :as vec]
             [wg.world :as world]
             [devtools.core :as devtools]
-            [wg.client.ws :as ws]))
+            [wg.client.ws :as ws]
+            [sc.api]))
 
 (devtools/set-pref!
  :cljs-land-style
@@ -39,6 +40,8 @@
     (app/add-child app obj)))
 
 (defn add-player! [db app player]
+  (.log js/console "ADD PLAYER" player)
+  ;; TODO implement asset loader
   (let [sprite (sprite/make "/img/1_IDLE_000.png")
         pos (:player/pos player)]
     (sprite/set-anchor! sprite 0.5)
@@ -49,9 +52,11 @@
 
 (defn make-update-fn [app]
   (fn [dt]
-    (let [{:keys [:db/players :db/player-id :app/sprites]} @db]
-      (doseq [{:player/keys [speed id] target-pos :player/pos} (vals players)]
-        (let [sprite (get sprites id)
+    (let [{:keys [:db/players :db/player-id :db/backend-players :app/sprites]} @db]
+      (doseq [{:player/keys [speed id] :as client-player} (vals players)]
+        (let [backend-player (get backend-players id)
+              target-pos (:player/pos client-player)
+              sprite (get sprites id)
               current-pos (world/->world-coords app (sprite/get-pos sprite))]
           (when-not (= current-pos target-pos)
             (let [diff (vec/- target-pos current-pos)
@@ -84,9 +89,10 @@
     (when (true? (nth ?data 3))
       (ws/send! ws-client [:player/joined {:player/id (:uid @(:state ws-client))}]))
     :player/joined
-    [] ;; Add a player to the app stage. I really need some state management here :/
+    (do (add-player! db @app-atom ?data)
+        (swap! db assoc-in [:backend/players (:player/id ?data)] ?data))
     :player/update-all
-    (swap! db assoc :backend/players ?data)
+    (swap! db assoc :db/backend-players ?data)
     (.log js/console :ws/unknown-event event)))
 
 (defn ^:dev/after-load refresh! []
@@ -102,3 +108,10 @@
     (reset! app-atom app)
     (ws/start-listener! ws-client #(socket-message-handler %))
     (swap! db assoc :dev/cleanup (mount! app))))
+
+(comment
+  (dissoc @db :ws/client)
+  (:app/sprites @db)
+
+
+  )
