@@ -39,5 +39,8 @@
 (defn remove-update-fn! [app update-fn]
   (j/call-in app [:ticker :remove] update-fn))
 
+(defn remove-child [app child]
+  (j/call-in app [:stage :removeChild] child))
+
 (defn clear! [app]
   (j/call-in app [:stage :removeChildren]))

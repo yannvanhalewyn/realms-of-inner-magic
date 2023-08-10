@@ -2,8 +2,10 @@
   (:require
    [rim.util.async :as util.async]
    [wg.server.ws :as ws]
-   [rim.server.log :as log]
-   [medley.core :as m]))
+   [rim.server.log :as log]))
+
+;; Broadcast player data every ms
+(def BROADCAST_INTERVAL 100)
 
 (defonce world (atom {:players {}}))
 
@@ -11,7 +13,7 @@
   (log/info :game/client-msg event)
   (case id
     :chsk/uidport-close
-    (swap! world m/dissoc-in [:players ?data])
+    (swap! world update :players dissoc ?data)
     :player/joined
     (let [player (assoc ?data
                    :player/pos [0 0]
@@ -27,5 +29,8 @@
   "Depends on ws/use-listener in order to get the ::ws/server from the context"
   [ctx]
   (assert (::ws/server ctx) "No ws-server in biff context")
-  (let [stop (util.async/interval 1000 #(broadcast! (::ws/server ctx)))]
-    (update ctx :biff/stop conj stop)))
+  (let [stop (util.async/interval BROADCAST_INTERVAL
+                                  #(broadcast! (::ws/server ctx)))]
+    (update ctx :biff/stop conj (fn []
+                                  (stop)
+                                  (reset! world {:players {}})))))
