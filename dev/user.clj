@@ -13,3 +13,12 @@
     (if (instance? Throwable ret)
       (throw ret)
       ret)))
+
+(defn go
+  "Loads all source files and switches to the 'dev' namespace."
+  []
+  (set! *print-namespace-maps* false)
+  (let [ret (ns/refresh :after `switch-to-dev)]
+    (if (instance? Throwable ret)
+      (throw ret)
+      ((resolve 'dev/start)))))

@@ -6,6 +6,7 @@
             [malli.registry :as malr]
             [wg.server.api :as api]
             [wg.server.ws :as ws]
+            [wg.server.game :as game]
             [org.httpkit.server :as http-server]
             [clojure.java.io :as io]))
 
@@ -43,8 +44,7 @@
                           (apply biff/safe-merge))
    :chsk/server {:csrf-token-fn nil
                  :user-id-fn (fn [_req] (random-uuid))}
-   :chsk/handler (fn [event]
-                   (println "CHSK EVENT" (keys event)))})
+   :chsk/handler game/handle-client-msg})
 
 (defonce system (atom {}))
 

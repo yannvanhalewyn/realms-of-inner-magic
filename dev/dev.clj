@@ -1,15 +1,18 @@
 (ns dev
   (:require
    [sc.api]
+   [clojure.core.async :as async]
    [wg.server.main :as main]
    [wg.server.ws :as ws]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
+   [rim.server.log :as log]
    [clojure.tools.namespace.repl :as tools.ns.repl]
    [com.biffweb :as biff]
    [com.biffweb.impl.xtdb :as biff.xt]
    [malli.core :as malli]
    [xtdb.api :as xt]))
+
+(set! *warn-on-reflection* true)
 
 (def start #'main/-main)
 
@@ -17,13 +20,13 @@
 
 (defn refresh []
   (doseq [f (:biff/stop @system)]
-    (log/info "stopping:" (str f))
+    (log/info :dev/stopping (str f))
     (f))
   (tools.ns.repl/refresh :after `start))
 
 (defn reset []
   (doseq [f (:biff/stop @system)]
-    (log/info "stopping:" (str f))
+    (log/info :dev/stopping (str f))
     (f))
   (start))
 
@@ -62,6 +65,9 @@
 
 (defn explain [doc-type doc]
   (malli/explain doc-type doc @(:biff/malli-opts @system)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; WS / Async
 
 (defn ws-server []
   (::ws/server @system))
