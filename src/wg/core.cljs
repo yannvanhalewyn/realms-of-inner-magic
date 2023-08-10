@@ -72,10 +72,13 @@
 (defn socket-message-handler
   [{:keys [ch-recv send-fn state event id ?data] :as ws-client}]
   (.log js/console :received-msg event ws-client)
-  (let [[event-name data] event]
-    (when (and (= :chsk/handshake event-name)
-               (true? (nth data 3)))
-      (ws/send! ws-client [:player/joined {:player/id (:uid @(:state ws-client))}]))))
+  (case id
+    :chsk/handshake
+    (when (true? (nth ?data 3))
+      (ws/send! ws-client [:player/joined {:player/id (:uid @(:state ws-client))}]))
+    :player/update-all
+    (.log js/console ?data)
+    (.log js/console :ws/unknown-event event)))
 
 (defn ^:dev/after-load refresh! []
   (app/clear! @app-atom)

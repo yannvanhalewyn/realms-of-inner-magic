@@ -78,7 +78,8 @@
    biff.middleware/use-wrap-ctx
    use-http-kit
    biff/use-chime
-   biff/use-beholder])
+   biff/use-beholder
+   game/use-broadcaster])
 
 (defn -main [& args]
   (let [new-system (reduce (fn [system component]
