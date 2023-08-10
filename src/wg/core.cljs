@@ -95,4 +95,4 @@
     (swap! db assoc :ws/client ws-client)
     (reset! app-atom app)
     (ws/start-listener! ws-client #(socket-message-handler %))
-    (render! app)))
+    (swap! db assoc :dev/cleanup (render! app))))
