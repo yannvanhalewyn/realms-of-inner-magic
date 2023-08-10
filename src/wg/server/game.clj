@@ -7,15 +7,16 @@
 
 (defonce world (atom {:players {}}))
 
-(defn handle-client-msg [msg]
-  (log/info :game/client-msg (:event msg))
-  (case (:id msg)
+(defn handle-client-msg [{:keys [event id ?data] :as ws}]
+  (log/info :game/client-msg event)
+  (case id
     :chsk/uidport-close
-    (swap! world m/dissoc-in [:players (:?data msg)])
+    (swap! world m/dissoc-in [:players ?data])
     :player/joined
-    (let [player (:?data msg)]
-      (swap! world assoc-in [:players (:player/id player)] player))
-    (log/info :game/client-msg (str "Unhandled message from client" (:id msg)))))
+    (let [player ?data]
+      (swap! world assoc-in [:players (:player/id player)] player)
+      (ws/broadcast-others! ws event))
+    (log/info :game/client-msg (str "Unhandled message from client" id))))
 
 (defn broadcast! [ws-server]
   (ws/broadcast! ws-server [:player/update-all (:players @world)]))

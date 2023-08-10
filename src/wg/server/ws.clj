@@ -18,6 +18,12 @@
   (doseq [uid (:any @connected-uids)]
     (send-fn uid msg)))
 
+(defn broadcast-others! [{:keys [connected-uids send-fn] :as ws} msg]
+  (doseq [uid (:any @connected-uids)]
+    (if-not (= uid (:uid ws))
+      (send-fn uid msg)
+      (log/debug :ws/broadcast-others "skipping" uid))))
+
 (defn start-listener! [{:keys [ch-recv]} handler]
   (async/go-loop []
     (when-let [msg (async/<! ch-recv)]

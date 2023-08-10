@@ -35,23 +35,23 @@
     (app/add-child app obj)))
 
 (defn render! [app]
-  (let [bunny (make-sprite "/img/1_IDLE_000.png")]
-    (swap! db assoc :player-sprite bunny)
+  (let [player (make-sprite "/img/1_IDLE_000.png")]
+    (swap! db assoc :player-sprite player)
     (add-background! app)
-    (app/add-child app bunny)
+    (app/add-child app player)
 
-    (j/call-in bunny [:anchor :set] 0.5)
+    (j/call-in player [:anchor :set] 0.5)
 
     (let [pos [0 0]]
       (swap! db assoc :db/player {:player/pos pos
                                   ;; m/s
                                   :player/speed 1.38})
-      (sprite/set-pos! bunny (world/->pixel-coords app pos)))
+      (sprite/set-pos! player (world/->pixel-coords app pos)))
 
     (let [update-fn (fn [dt]
                       (let [{:player/keys [speed]
                              target-pos :player/pos} (:db/player @db)
-                            sprite-pos (sprite/get-pos bunny)
+                            sprite-pos (sprite/get-pos player)
                             current-pos (world/->world-coords app sprite-pos)]
 
                         (when-not (= current-pos target-pos)
@@ -63,7 +63,7 @@
                                           target-pos
                                           (vec/+ current-pos (vec/* dir step)))]
                             (sprite/set-pos!
-                             bunny (world/->pixel-coords app new-pos))))))]
+                             player (world/->pixel-coords app new-pos))))))]
 
       (j/call-in app [:ticker :add] update-fn)
       #(do (.log js/console "Cleanup!")
@@ -71,13 +71,16 @@
 
 (defn socket-message-handler
   [{:keys [ch-recv send-fn state event id ?data] :as ws-client}]
-  (.log js/console :received-msg event ws-client)
+  (when-not (= id :player/update-all)
+    (.log js/console :received-msg event ws-client))
   (case id
     :chsk/handshake
     (when (true? (nth ?data 3))
       (ws/send! ws-client [:player/joined {:player/id (:uid @(:state ws-client))}]))
+    :player/joined
+    [] ;; Add a player to the app stage. I really need some state management here :/
     :player/update-all
-    (.log js/console ?data)
+    (swap! db assoc :backend/players ?data)
     (.log js/console :ws/unknown-event event)))
 
 (defn ^:dev/after-load refresh! []
@@ -91,5 +94,5 @@
         ws-client (ws/connect!)]
     (swap! db assoc :ws/client ws-client)
     (reset! app-atom app)
-    (ws/start-listener! ws-client socket-message-handler)
+    (ws/start-listener! ws-client #(socket-message-handler %))
     (render! app)))
