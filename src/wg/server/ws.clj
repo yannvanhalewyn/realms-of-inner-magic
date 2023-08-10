@@ -1,5 +1,6 @@
 (ns wg.server.ws
   (:require
+   [rim.server.log :as log]
    [clojure.core.async :as async]
    [taoensso.sente :as sente]
    [taoensso.sente.server-adapters.http-kit :refer [get-sch-adapter]]))
@@ -19,9 +20,11 @@
 
 (defn start-listener! [{:keys [ch-recv]} handler]
   (async/go-loop []
-    ;; Needs recur
     (when-let [msg (async/<! ch-recv)]
-      (handler msg)
+      (try
+        (handler msg)
+        (catch Exception e
+          (log/error :ws/listener-backend (.getMessage e))))
       (recur))))
 
 (defn use-listener [{:keys [:chsk/server :chsk/handler] :as ctx}]
