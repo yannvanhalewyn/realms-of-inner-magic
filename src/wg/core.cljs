@@ -14,18 +14,22 @@
 (devtools/install! [:custom-formatters :sanity-hints])
 
 (defonce app-atom (atom nil))
-(defonce db (atom {}))
-
-(defn make-sprite [url]
-  (j/call pixi/Sprite :from url))
+(defonce db
+  (let [player-id (random-uuid)]
+    (atom {:db/player-id player-id
+           :db/players {player-id {:player/id player-id
+                                   :player/pos [0 0]}}
+           :app/sprites {}})))
 
 (defn on-click! [sprite f]
   (j/call sprite :on "pointerdown" f)
   (j/assoc! sprite :eventMode "static"))
 
 (defn on-click [e]
-  (swap! db assoc-in [:db/player :player/pos]
-         (world/->world-coords @app-atom [(j/get e :x) (j/get e :y)])))
+  (let [player-id (:db/player-id @db)]
+    (swap! db assoc-in [:db/players player-id :player/pos]
+           (world/->world-coords @app-atom [(j/get e :x) (j/get e :y)]))
+    (.log js/console [(j/get e :x) (j/get e :y)] (vals (:db/players @db)))))
 
 (defn add-background! [app]
   (let [obj (pixi/Graphics.)]
@@ -34,40 +38,42 @@
     (on-click! obj on-click)
     (app/add-child app obj)))
 
-(defn render! [app]
-  (let [player (make-sprite "/img/1_IDLE_000.png")]
-    (swap! db assoc :player-sprite player)
-    (add-background! app)
-    (app/add-child app player)
+(defn add-player! [db app player]
+  (let [sprite (sprite/make "/img/1_IDLE_000.png")
+        pos (:player/pos player)]
+    (sprite/set-anchor! sprite 0.5)
+    (sprite/set-pos! sprite (world/->pixel-coords app pos))
+    (swap! db assoc-in [:app/sprites (:player/id player)] sprite)
+    (app/add-child app sprite)
+    sprite))
 
-    (j/call-in player [:anchor :set] 0.5)
+(defn make-update-fn [app]
+  (fn [dt]
+    (let [{:keys [:db/players :db/player-id :app/sprites]} @db]
+      (doseq [{:player/keys [speed id] target-pos :player/pos} (vals players)]
+        (let [sprite (get sprites id)
+              current-pos (world/->world-coords app (sprite/get-pos sprite))]
+          (when-not (= current-pos target-pos)
+            (let [diff (vec/- target-pos current-pos)
+                  distance (vec/length diff)
+                  dir (vec/normalize (vec/div diff distance))
+                  step (* 1.38 dt 0.001)
 
-    (let [pos [0 0]]
-      (swap! db assoc :db/player {:player/pos pos
-                                  ;; m/s
-                                  :player/speed 1.38})
-      (sprite/set-pos! player (world/->pixel-coords app pos)))
+                  new-pos (if (> step distance)
+                            target-pos
+                            (vec/+ current-pos (vec/* dir step)))]
+              (sprite/set-pos!
+               sprite (world/->pixel-coords app new-pos)))))))))
 
-    (let [update-fn (fn [dt]
-                      (let [{:player/keys [speed]
-                             target-pos :player/pos} (:db/player @db)
-                            sprite-pos (sprite/get-pos player)
-                            current-pos (world/->world-coords app sprite-pos)]
+(defn mount! [app]
+  (add-background! app)
 
-                        (when-not (= current-pos target-pos)
-                          (let [diff (vec/- target-pos current-pos)
-                                distance (vec/length diff)
-                                dir (vec/normalize (vec/div diff distance))
-                                step (* speed dt 0.001)
-                                new-pos (if (> step distance)
-                                          target-pos
-                                          (vec/+ current-pos (vec/* dir step)))]
-                            (sprite/set-pos!
-                             player (world/->pixel-coords app new-pos))))))]
+  (doseq [[id player] (:db/players @db)]
+    (add-player! db app player))
 
-      (j/call-in app [:ticker :add] update-fn)
-      #(do (.log js/console "Cleanup!")
-           (j/call-in app [:ticker :remove] update-fn)))))
+  (let [update-fn (make-update-fn app)]
+    (app/add-update-fn! app update-fn)
+    #(app/remove-update-fn! app update-fn)))
 
 (defn socket-message-handler
   [{:keys [ch-recv send-fn state event id ?data] :as ws-client}]
@@ -87,12 +93,12 @@
   (app/clear! @app-atom)
   (when-let [cleanup (:dev/cleanup @db)]
     (cleanup))
-  (swap! db assoc :dev/cleanup (render! @app-atom)))
+  (swap! db assoc :dev/cleanup (mount! @app-atom)))
 
 (defn main []
   (let [app (app/new {:on-resize refresh!})
-        ws-client (ws/connect!)]
+        ws-client (ws/connect! (:db/player-id @db))]
     (swap! db assoc :ws/client ws-client)
     (reset! app-atom app)
     (ws/start-listener! ws-client #(socket-message-handler %))
-    (swap! db assoc :dev/cleanup (render! app))))
+    (swap! db assoc :dev/cleanup (mount! app))))

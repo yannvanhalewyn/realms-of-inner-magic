@@ -1,7 +1,7 @@
 (ns wg.server.main
   (:require [com.biffweb :as biff]
             [com.biffweb.impl.middleware :as biff.middleware]
-            [clojure.tools.logging :as log]
+            [rim.server.log :as log]
             [malli.core :as malc]
             [malli.registry :as malr]
             [wg.server.api :as api]
@@ -43,7 +43,8 @@
    :biff.xtdb/tx-fns (->> (conj (keep :tx-fns plugins) biff/tx-fns)
                           (apply biff/safe-merge))
    :chsk/server {:csrf-token-fn nil
-                 :user-id-fn (fn [_req] (random-uuid))}
+                 :user-id-fn (fn [req]
+                               (get-in req [:params :uid]))}
    :chsk/handler game/handle-client-msg})
 
 (defonce system (atom {}))
@@ -83,7 +84,7 @@
 
 (defn -main [& args]
   (let [new-system (reduce (fn [system component]
-                             (log/info "starting:" (str component))
+                             (log/info :system "Starting:" (str component))
                              (component system))
                            initial-system
                            components)]

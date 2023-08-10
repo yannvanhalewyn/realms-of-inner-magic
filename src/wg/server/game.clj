@@ -13,9 +13,11 @@
     :chsk/uidport-close
     (swap! world m/dissoc-in [:players ?data])
     :player/joined
-    (let [player ?data]
+    (let [player (assoc ?data
+                   :player/pos [0 0]
+                   :player/speed 1.38)]
       (swap! world assoc-in [:players (:player/id player)] player)
-      (ws/broadcast-others! ws event))
+      (ws/broadcast-others! ws [:player/joined player]))
     (log/info :game/client-msg (str "Unhandled message from client" id))))
 
 (defn broadcast! [ws-server]

@@ -33,5 +33,11 @@
 (defn last-time [app]
   (j/get-in app [:ticker :lastTime]))
 
+(defn add-update-fn! [app update-fn]
+  (j/call-in app [:ticker :add] update-fn))
+
+(defn remove-update-fn! [app update-fn]
+  (j/call-in app [:ticker :remove] update-fn))
+
 (defn clear! [app]
   (j/call-in app [:stage :removeChildren]))
