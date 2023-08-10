@@ -69,8 +69,13 @@
       #(do (.log js/console "Cleanup!")
            (j/call-in app [:ticker :remove] update-fn)))))
 
-(defn socket-message-handler [{:keys [ch-recv send-fn state event id ?data]}]
-  (.log js/console :received-socket-message event))
+(defn socket-message-handler
+  [{:keys [ch-recv send-fn state event id ?data] :as ws-client}]
+  (.log js/console :received-msg event ws-client)
+  (let [[event-name data] event]
+    (when (and (= :chsk/handshake event-name)
+               (true? (nth data 3)))
+      (ws/send! ws-client [:player/joined {:player/id (:uid @(:state ws-client))}]))))
 
 (defn ^:dev/after-load refresh! []
   (app/clear! @app-atom)
@@ -84,5 +89,4 @@
     (swap! db assoc :ws/client ws-client)
     (reset! app-atom app)
     (ws/start-listener! ws-client socket-message-handler)
-    (ws/send! ws-client [:player/joined])
     (render! app)))
