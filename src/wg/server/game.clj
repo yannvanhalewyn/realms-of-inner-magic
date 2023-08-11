@@ -5,7 +5,7 @@
    [rim.server.log :as log]))
 
 ;; Broadcast player data every ms
-(def BROADCAST_INTERVAL 100)
+(def BROADCAST_INTERVAL 50)
 
 (def world (atom {::players {}}))
 

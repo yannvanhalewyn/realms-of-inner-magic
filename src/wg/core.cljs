@@ -17,12 +17,9 @@
  (str "filter:invert(1);" (:cljs-land-style (devtools/get-prefs))))
 (devtools/install! [:custom-formatters :sanity-hints])
 
-(defonce app-atom (atom nil))
 (defonce db
   (let [player-id (random-uuid)]
     (atom {:db/player-id player-id
-           :db/players {player-id {:player/id player-id
-                                   :player/pos [0 0]}}
            :app/sprites {}})))
 
 (defn on-click! [sprite f]
@@ -30,7 +27,7 @@
   (j/assoc! sprite :eventMode "static"))
 
 (defn on-click [e]
-  (let [world-coords (world/->world-coords @app-atom [(j/get e :x) (j/get e :y)])]
+  (let [world-coords (world/->world-coords (:app/app @db) [(j/get e :x) (j/get e :y)])]
     (ws/send! (:ws/client @db) [:player/move-intent world-coords])))
 
 (defn add-background! [app]
@@ -52,31 +49,31 @@
     sprite))
 
 (defn reconcile-playerbase! [db]
-  (let [{:keys [:db/player-id :db/backend-players :app/sprites]} @db
-        backend-ids (set (keys backend-players))
+  (let [{:keys [:db/player-id :db/players :app/sprites]} @db
+        backend-ids (set (keys players))
         client-ids (set (keys sprites))]
+    ;; Mounted new players
     (doseq [player-id (set/difference
                        backend-ids
                        client-ids)]
-      (add-player! db @app-atom (get backend-players player-id)))
+      (add-player! db (:app/app @db) (get players player-id)))
 
-    ;; Remove exited players
+    ;; Unmount exited players
     (doseq [player-id (set/difference
                        client-ids
                        (conj backend-ids player-id))]
       (.log js/console :removing-player player-id)
-      ;; TODO remove player
-      (app/remove-child @app-atom (get sprites player-id))
+      (app/remove-child (:app/app @db) (get sprites player-id))
       (swap! db update :app/sprites dissoc player-id))))
 
 (defn make-update-fn [app timer]
   (fn [dt]
-    (let [{:keys [:db/backend-players :app/sprites]} @db]
+    (let [{:keys [:db/players :app/sprites]} @db]
       (when (timer/throttled? timer ::reconcile-playerbase)
         (reconcile-playerbase! db))
 
       (doseq [{:player/keys [speed id]
-               target-pos :player/pos} (vals backend-players)]
+               target-pos :player/pos} (vals players)]
         (let [sprite (get sprites id)
               current-pos (world/->world-coords app (sprite/get-pos sprite))]
           (when sprite
@@ -96,9 +93,7 @@
 
 (defn mount! [app]
   (add-background! app)
-
-  (doseq [[_id player] (:db/players @db)]
-    (add-player! db app player))
+  (add-player! db app {:player/id (:db/player-id @db)})
 
   (let [timer (timer/start 0)
         update-fn (make-update-fn app timer)]
@@ -116,15 +111,15 @@
       (ws/send! ws-client [:player/joined {:player/id (:uid @(:state ws-client))}]))
     :player/update-all
     ;; TODO make sente transit (but transform for now)
-    (swap! db assoc :db/backend-players (->> (m/map-keys uuid ?data)
+    (swap! db assoc :db/players (->> (m/map-keys uuid ?data)
                                              (m/map-vals #(update % :player/id uuid))))
     (.log js/console :ws/unknown-event event)))
 
 (defn ^:dev/after-load refresh! []
-  (app/clear! @app-atom)
+  (app/clear! (:app/app @db))
   (when-let [cleanup (:dev/cleanup @db)]
     (cleanup))
-  (swap! db assoc :dev/cleanup (mount! @app-atom)))
+  (swap! db assoc :dev/cleanup (mount! (:app/app @db))))
 
 (defn main []
   (let [app (app/new {:on-resize refresh!})
@@ -132,7 +127,6 @@
     (swap! db assoc
            :ws/client ws-client
            :app/app app)
-    (reset! app-atom app)
     (ws/start-listener! ws-client #(socket-message-handler %))
     (swap! db assoc :dev/cleanup (mount! app))))
 
