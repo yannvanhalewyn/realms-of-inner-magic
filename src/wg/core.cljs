@@ -1,16 +1,17 @@
 (ns wg.core
-  (:require ["pixi.js" :as pixi]
-            [applied-science.js-interop :as j]
-            [wg.app :as app]
-            [wg.sprite :as sprite]
-            [wg.vec :as vec]
-            [wg.world :as world]
-            [devtools.core :as devtools]
-            [wg.client.ws :as ws]
-            [rim.util.timer :as timer]
-            [clojure.set :as set]
-            [medley.core :as m]
-            [sc.api]))
+  (:require
+   [applied-science.js-interop :as j]
+   [clojure.set :as set]
+   [devtools.core :as devtools]
+   [medley.core :as m]
+   [rim.character :as character]
+   [rim.util.timer :as timer]
+   [sc.api]
+   [wg.app :as app]
+   [wg.client.ws :as ws]
+   [wg.sprite :as sprite]
+   [wg.vec :as vec]
+   [wg.world :as world]))
 
 (devtools/set-pref!
  :cljs-land-style
@@ -28,21 +29,28 @@
 
 (defn on-click [e]
   (let [world-coords (world/->world-coords (:app/app @db) [(j/get e :x) (j/get e :y)])]
+    (.log js/console :app/on-click world-coords)
     (ws/send! (:ws/client @db) [:player/move-intent world-coords])))
 
 (defn add-background! [app]
-  (let [obj (pixi/Graphics.)]
-    (j/call obj :beginFill 0x8c9d3f)
-    (j/call obj :drawRect 0 0 (app/get-width app) (app/get-height app))
-    (on-click! obj on-click)
-    (app/add-child app obj)))
+  (let [sprite (sprite/make "/img/world.png")]
+    (sprite/set-anchor! sprite 0.5)
+    (sprite/set-scale! sprite [2 2])
+    ;; world is 1280, -3840 moves it out of bounds.
+    ;; So it's a 3x point -> px ration
+    ;; That's because of the scale haha
+    ;; (sprite/set-pos! sprite [(/ -3840 2) (/ -3840 2)])
+    (on-click! sprite on-click)
+    (app/add-child app sprite)))
 
 (defn add-player! [db app player]
   ;; TODO implement asset loader
-  (let [sprite (sprite/make "/img/1_IDLE_000.png")
+  (let [character (character/config (:character/class player))
+        sprite (sprite/make (:character/texture character))
         pos (:player/pos player)]
-    (.log js/console :adding-player player)
+    (.log js/console :adding-player player :character character)
     (sprite/set-anchor! sprite 0.5)
+    (sprite/set-scale! sprite (:character/scale character))
     (sprite/set-pos! sprite (world/->pixel-coords app pos))
     (swap! db assoc-in [:app/sprites (:player/id player)] sprite)
     (app/add-child app sprite)
@@ -81,7 +89,7 @@
               (let [diff (vec/- target-pos current-pos)
                     distance (vec/length diff)
                     dir (vec/normalize (vec/div diff distance))
-                    step (* 0.0038 dt)
+                    step (* 0.002 dt)
 
                     new-pos (if (> step distance)
                               target-pos
@@ -93,7 +101,7 @@
 
 (defn mount! [app]
   (add-background! app)
-  (add-player! db app {:player/id (:db/player-id @db)})
+  ;; TODO maybe add player before waiting for backend?
 
   (let [timer (timer/start 0)
         update-fn (make-update-fn app timer)]
@@ -112,7 +120,7 @@
     :player/update-all
     ;; TODO make sente transit (but transform for now)
     (swap! db assoc :db/players (->> (m/map-keys uuid ?data)
-                                             (m/map-vals #(update % :player/id uuid))))
+                                     (m/map-vals #(update % :player/id uuid))))
     (.log js/console :ws/unknown-event event)))
 
 (defn ^:dev/after-load refresh! []

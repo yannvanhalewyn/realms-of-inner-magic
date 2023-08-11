@@ -2,10 +2,11 @@
   (:require
    [rim.util.async :as util.async]
    [wg.server.ws :as ws]
+   [rim.character :as character]
    [rim.server.log :as log]))
 
 ;; Broadcast player data every ms
-(def BROADCAST_INTERVAL 50)
+(def BROADCAST_INTERVAL 100)
 
 (def world (atom {::players {}}))
 
@@ -13,7 +14,8 @@
   (assoc-in db [::players (:player/id player)]
             (assoc player
               :player/pos [0 0]
-              :player/speed 1.38)))
+              :player/speed 1.38
+              :character/class (character/random-class))))
 
 (defn player-left [db player-id]
   (update db ::players dissoc player-id))
