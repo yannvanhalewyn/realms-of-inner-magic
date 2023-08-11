@@ -29,13 +29,9 @@
   (j/call sprite :on "pointerdown" f)
   (j/assoc! sprite :eventMode "static"))
 
-;; TODO make sente transit (but transform for now)
-;; TODO send and calculate movement to backend
 (defn on-click [e]
-  (let [player-id (:db/player-id @db)]
-    (swap! db assoc-in [:db/players player-id :player/pos]
-           (world/->world-coords @app-atom [(j/get e :x) (j/get e :y)]))
-    (.log js/console :click [(j/get e :x) (j/get e :y)] (vals (:db/players @db)))))
+  (let [world-coords (world/->world-coords @app-atom [(j/get e :x) (j/get e :y)])]
+    (ws/send! (:ws/client @db) [:player/move-intent world-coords])))
 
 (defn add-background! [app]
   (let [obj (pixi/Graphics.)]
@@ -56,7 +52,7 @@
     sprite))
 
 (defn reconcile-playerbase! [db]
-  (let [{:keys [:db/players :db/player-id :db/backend-players :app/sprites]} @db
+  (let [{:keys [:db/player-id :db/backend-players :app/sprites]} @db
         backend-ids (set (keys backend-players))
         client-ids (set (keys sprites))]
     (doseq [player-id (set/difference
@@ -75,32 +71,33 @@
 
 (defn make-update-fn [app timer]
   (fn [dt]
-    (let [{:keys [:db/players :app/sprites]} @db]
+    (let [{:keys [:db/backend-players :app/sprites]} @db]
       (when (timer/throttled? timer ::reconcile-playerbase)
         (reconcile-playerbase! db))
 
-      (doseq [{:player/keys [speed id] :as client-player} (vals players)]
-        (let [target-pos (:player/pos client-player)
-              sprite (get sprites id)
+      (doseq [{:player/keys [speed id]
+               target-pos :player/pos} (vals backend-players)]
+        (let [sprite (get sprites id)
               current-pos (world/->world-coords app (sprite/get-pos sprite))]
-          (when-not (= current-pos target-pos)
-            (let [diff (vec/- target-pos current-pos)
-                  distance (vec/length diff)
-                  dir (vec/normalize (vec/div diff distance))
-                  step (* 0.0038 dt)
+          (when sprite
+            (when-not (= current-pos target-pos)
+              (let [diff (vec/- target-pos current-pos)
+                    distance (vec/length diff)
+                    dir (vec/normalize (vec/div diff distance))
+                    step (* 0.0038 dt)
 
-                  new-pos (if (> step distance)
-                            target-pos
-                            (vec/+ current-pos (vec/* dir step)))]
-              (sprite/set-pos!
-               sprite (world/->pixel-coords app new-pos))))))
+                    new-pos (if (> step distance)
+                              target-pos
+                              (vec/+ current-pos (vec/* dir step)))]
+                (sprite/set-pos!
+                 sprite (world/->pixel-coords app new-pos)))))))
 
       (timer/tick timer (app/last-time app)))))
 
 (defn mount! [app]
   (add-background! app)
 
-  (doseq [[id player] (:db/players @db)]
+  (doseq [[_id player] (:db/players @db)]
     (add-player! db app player))
 
   (let [timer (timer/start 0)
@@ -110,7 +107,7 @@
     #(app/remove-update-fn! app update-fn)))
 
 (defn socket-message-handler
-  [{:keys [ch-recv send-fn state event id ?data] :as ws-client}]
+  [{:keys [event id ?data] :as ws-client}]
   (when-not (= id :player/update-all)
     (.log js/console :received-msg id ?data))
   (case id
@@ -118,6 +115,7 @@
     (when (true? (nth ?data 3))
       (ws/send! ws-client [:player/joined {:player/id (:uid @(:state ws-client))}]))
     :player/update-all
+    ;; TODO make sente transit (but transform for now)
     (swap! db assoc :db/backend-players (->> (m/map-keys uuid ?data)
                                              (m/map-vals #(update % :player/id uuid))))
     (.log js/console :ws/unknown-event event)))
@@ -141,6 +139,11 @@
 (comment
   (dissoc @db :ws/client)
   (:app/sprites @db)
+  (m/map-keys uuid
+              {"71a7ac6a-762e-4192-a084-d0fe6a7f609f"
+               {:player/id "71a7ac6a-762e-4192-a084-d0fe6a7f609f",
+                :player/pos [1 2]
+                :player/speed 1.38}})
 
 
   )

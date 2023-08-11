@@ -82,5 +82,6 @@
 (comment
   (ws-broadcast! [:my/topic "how you doin"])
   (ws-send! #uuid "216bd1c6-2a2c-4242-84a5-82683e106abc" [:my/topic "how you doin"])
+  (:connected-uids (ws-server))
 
   )

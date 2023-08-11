@@ -7,23 +7,33 @@
 ;; Broadcast player data every ms
 (def BROADCAST_INTERVAL 100)
 
-(defonce world (atom {:players {}}))
+(def world (atom {::players {}}))
 
-(defn handle-client-msg [{:keys [event id ?data] :as ws}]
+(defn player-joined [db player]
+  (assoc-in db [::players (:player/id player)]
+            (assoc player
+              :player/pos [0 0]
+              :player/speed 1.38)))
+
+(defn player-left [db player-id]
+  (update db ::players dissoc player-id))
+
+(defn player-move-intent [db player-id target-pos]
+  ;; Recalculate pos every frame? I may need a game loop on server.
+  ;; For now the player teleports and the client animates, which is fine until
+  ;; we need collision.
+  (assoc-in db [::players player-id :player/pos] target-pos))
+
+(defn handle-client-msg [{:keys [event id ?data uid] :as ws}]
   (log/info :game/client-msg event)
   (case id
-    :chsk/uidport-close
-    (swap! world update :players dissoc ?data)
-    :player/joined
-    (let [player (assoc ?data
-                   :player/pos [0 0]
-                   :player/speed 1.38)]
-      (swap! world assoc-in [:players (:player/id player)] player)
-      (ws/broadcast-others! ws [:player/joined player]))
+    :chsk/uidport-close (swap! world player-left ?data)
+    :player/joined      (swap! world player-joined ?data)
+    :player/move-intent (swap! world player-move-intent uid ?data)
     (log/info :game/client-msg (str "Unhandled message from client" id))))
 
 (defn broadcast! [ws-server]
-  (ws/broadcast! ws-server [:player/update-all (:players @world)]))
+  (ws/broadcast! ws-server [:player/update-all (::players @world)]))
 
 (defn use-broadcaster
   "Depends on ws/use-listener in order to get the ::ws/server from the context"
@@ -33,4 +43,4 @@
                                   #(broadcast! (::ws/server ctx)))]
     (update ctx :biff/stop conj (fn []
                                   (stop)
-                                  (reset! world {:players {}})))))
+                                  (reset! world {::players {}})))))
