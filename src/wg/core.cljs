@@ -129,7 +129,7 @@
     (cleanup))
   (swap! db assoc :dev/cleanup (mount! (:app/app @db))))
 
-(defn main []
+(defn -main []
   (let [app (app/new {:on-resize refresh!})
         ws-client (ws/connect! (:db/player-id @db))]
     (swap! db assoc
