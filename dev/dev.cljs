@@ -8,7 +8,7 @@
 (def db #'core/db)
 
 (defn get! [k]
-  (get @db k))()
+  (get @core/db k))
 
 (defn -main []
   (core/-main))

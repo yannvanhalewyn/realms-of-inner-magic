@@ -4,7 +4,10 @@
    [clojure.set :as set]
    [devtools.core :as devtools]
    [medley.core :as m]
+   [promesa.core :as p]
    [rim.character :as character]
+   [rim.client.map :as map]
+   [rim.client.plugin :as plugin]
    [rim.util.timer :as timer]
    [sc.api]
    [wg.app :as app]
@@ -105,8 +108,10 @@
 
   (let [timer (timer/start 0)
         update-fn (make-update-fn app timer)]
-    (timer/add-throttle! timer ::reconcile-playerbase 1000)
-    (app/add-update-fn! app update-fn)
+    (p/let [system (plugin/init [map/plugin])]
+      (swap! db merge system)
+      (timer/add-throttle! timer ::reconcile-playerbase 1000)
+      (app/add-update-fn! app update-fn))
     #(app/remove-update-fn! app update-fn)))
 
 (defn socket-message-handler
